@@ -67,8 +67,57 @@ app.get('/api/usuarios', async (req, res) => {
   }
 });
 
-// Exportar para Vercel
-module.exports = app;
+// Ruta para actualizar un usuario
+app.put('/api/usuarios/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, email, edad, telefono } = req.body;
+    
+    const query = `
+      UPDATE usuarios 
+      SET nombre = $1, email = $2, edad = $3, telefono = $4 
+      WHERE id = $5 
+      RETURNING *
+    `;
+    const values = [nombre, email, edad, telefono, id];
+
+    const result = await pool.query(query, values);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    res.status(200).json(result.rows[0]);
+  } catch (err) {
+    console.error('Error al actualizar usuario:', err);
+    res.status(500).json({ error: 'Error al actualizar usuario', details: err.message });
+  }
+});
+
+// Ruta para eliminar un usuario
+app.delete('/api/usuarios/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const query = 'DELETE FROM usuarios WHERE id = $1 RETURNING *';
+    const values = [id];
+
+    const result = await pool.query(query, values);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    res.status(200).json({ 
+      message: 'Usuario eliminado exitosamente', 
+      usuario: result.rows[0] 
+    });
+  } catch (err) {
+    console.error('Error al eliminar usuario:', err);
+    res.status(500).json({ error: 'Error al eliminar usuario', details: err.message });
+  }
+});
+
 
 // Solo para desarrollo local
 if (require.main === module) {
